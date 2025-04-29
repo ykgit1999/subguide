@@ -3,9 +3,22 @@ import { useState, KeyboardEvent } from "react";
 import useSWR from "swr";
 
 /* =========================================
+   型定義
+========================================= */
+interface Title {
+  id: number;
+  title_jp?: string;
+  title_en?: string;
+  release_date?: string;
+  /** API からは配列または文字列(JSON 形式)で届く */
+  providers: string[] | string;
+}
+
+/* =========================================
    設定
 ========================================= */
-const base = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+const base =
+  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 /* =========================================
@@ -15,8 +28,11 @@ export default function Home() {
   const [kw, setKw] = useState("");
   const [query, setQuery] = useState("");
 
-  const { data } = useSWR(
-    query ? `${base}/search?keywords=${encodeURIComponent(query)}` : null,
+  // Title[] を明示して any を排除
+  const { data } = useSWR<Title[]>(
+    query
+      ? `${base}/search?keywords=${encodeURIComponent(query)}`
+      : null,
     fetcher
   );
 
@@ -27,7 +43,9 @@ export default function Home() {
 
   return (
     <main className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">サブスク TV ガイド PoC</h1>
+      <h1 className="text-2xl font-bold mb-4">
+        サブスク TV ガイド PoC
+      </h1>
 
       {/* ── 検索バー ───────────────────── */}
       <div className="flex gap-2">
@@ -48,23 +66,25 @@ export default function Home() {
 
       {/* ── 検索結果 ─────────────────── */}
       <ul className="mt-6 grid grid-cols-2 gap-4">
-        {(data ?? []).map((t: any) => {
-          // providers が "[]" の文字列として来る場合があるので安全に配列化
-          let provArr: string[] = [];
-          if (Array.isArray(t.providers)) {
-            provArr = t.providers;
-          } else if (typeof t.providers === "string" && t.providers.length) {
-            try {
-              provArr = JSON.parse(t.providers);
-            } catch {
-              provArr = [];
-            }
-          }
+        {(data ?? []).map((t) => {
+          // providers が配列でなければ文字列(JSON)をパース
+          const provArr: string[] = Array.isArray(t.providers)
+            ? t.providers
+            : t.providers
+            ? JSON.parse(t.providers)
+            : [];
 
           return (
-            <li key={t.id} className="border p-3 rounded space-y-1">
-              <p className="font-semibold">{t.title_jp || t.title_en}</p>
-              <p className="text-xs text-gray-500">{t.release_date}</p>
+            <li
+              key={t.id}
+              className="border p-3 rounded space-y-1"
+            >
+              <p className="font-semibold">
+                {t.title_jp || t.title_en}
+              </p>
+              <p className="text-xs text-gray-500">
+                {t.release_date}
+              </p>
 
               {/* 配信サービスバッジ */}
               <div className="flex flex-wrap gap-1">
